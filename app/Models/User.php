@@ -20,6 +20,8 @@ class User extends BaseUuidUser
         'address',
         'phone',
         'password',
+        'facebook_id',
+        'google_id',
     ];
 
     protected $hidden = [
@@ -52,8 +54,10 @@ class User extends BaseUuidUser
         return [
             'name' => 'required|string',
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignoreModel($this)],
-            'address' => 'required|string',
-            'phone' => 'required|string|phone:ID',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|phone:ID',
+            'facebook_id' => ['nullable', 'string', Rule::unique('users', 'facebook_id')->ignoreModel($this)],
+            'google_id' => ['nullable', 'string', Rule::unique('users', 'google_id')->ignoreModel($this)],
         ];
     }
 }
