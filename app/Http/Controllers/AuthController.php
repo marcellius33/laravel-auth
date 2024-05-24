@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Traits\ThrottlesAttempts;
 use App\Http\Helpers\RequestHelper;
+use App\Mail\UserVerification;
 use App\Models\User;
+use App\Models\VerificationCode;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -98,7 +102,10 @@ class AuthController extends AccessTokenController
             $user->password = Hash::make($body['password']);
             $user->saveOrFail();
 
-            // TODO: send verification code to verify user!
+            $verificationCode = new VerificationCode([
+                'user_id' => $user->id,
+            ]);
+            $verificationCode->save();
 
             DB::commit();
         } catch (Exception) {
@@ -106,8 +113,52 @@ class AuthController extends AccessTokenController
             throw new BadRequestHttpException(__('error.register_fail'));
         }
 
+        Mail::to($user)
+            ->send(new UserVerification($user, $verificationCode));
+
         return response()->json([
             'message' => __('success.register_success'),
+        ]);
+    }
+
+    /**
+     * Verify Email
+     * 
+     * @bodyParam email string required Example: zap@gmail.com
+     * @bodyParam code string required Example: 123456
+     */
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $body = $request->toArray();
+        $validator = validator($body, [
+            'email' => 'required|email:rfc,dns|exists:users,email',
+            'code' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            throw ValidationException::withMessages($validator->errors()->messages());
+        }
+
+        DB::beginTransaction();
+        try {
+            $user = User::where('email', $body['email'])->first();
+            $verificationCode = VerificationCode::where('user_id', $user->id)->first();
+
+            if ($verificationCode->code === $body['code']) {
+                $user->email_verified_at = Carbon::now();
+                $user->save();
+            } else {
+                throw new BadRequestHttpException(__('error.verification_fail'));
+            }
+
+            DB::commit();
+        } catch (Exception) {
+            DB::rollBack();
+            throw new BadRequestHttpException(__('error.verification_fail'));
+        }
+
+        return response()->json([
+            'message' => __('success.verification_success'),
         ]);
     }
 

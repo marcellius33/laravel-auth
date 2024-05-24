@@ -38,7 +38,7 @@ class User extends BaseUuidUser
     public function findForPassport(string $username): ?self
     {
         return $this->where('email', $username)
-            // ->whereNotNull('email_verified_at')
+            ->whereNotNull('email_verified_at')
             ->first();
     }
 
