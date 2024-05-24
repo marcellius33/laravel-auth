@@ -2,46 +2,58 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Abstract\BaseUuidUser;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\Rule;
+use Laravel\Passport\HasApiTokens;
+use Watson\Validating\ValidatingTrait;
 
-class User extends Authenticatable
+class User extends BaseUuidUser
 {
-    use HasFactory, Notifiable;
+    use Notifiable;
+    use ValidatingTrait;
+    use HasApiTokens;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
+        'address',
+        'phone',
         'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+        ];
+    }
+
+    public function findForPassport(string $username): ?self
+    {
+        return $this->where('email', $username)
+            // ->whereNotNull('email_verified_at')
+            ->first();
+    }
+
+    public function setEmailAttribute(string $value): void
+    {
+        $this->attributes['email'] = strtolower($value);
+    }
+
+    public function getRules(): array
+    {
+        return [
+            'name' => 'required|string',
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignoreModel($this)],
+            'address' => 'required|string',
+            'phone' => 'required|string|phone:ID',
         ];
     }
 }
