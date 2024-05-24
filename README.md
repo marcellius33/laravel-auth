@@ -4,7 +4,8 @@ Laravel Project using Passport and Socialite for Authentication.
 
 ### To run the project
 
-1. `docker compose up` to run the application and database
+1. `composer install` to install related package
+2. `docker compose up` to run the application and database
 
 ### Command that need to be run for the first time
 
